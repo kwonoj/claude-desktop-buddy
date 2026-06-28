@@ -76,31 +76,26 @@
 // ── Boot self-test (R/G/B flash) ───────────────────────────────────────
 #define S024_BOOT_SELFTEST 0
 
-// ── On-screen A/B button bar ───────────────────────────────────────────
-// In landscape the bar is a vertical strip on the RIGHT edge, split into B
-// (top) and A (bottom) — matching how the buttons sit when the panel is
-// mounted with the cable to the right. The sprite fills the region to its
-// left. (In portrait it falls back to a bottom strip.)
-#if (S024_ROTATION & 1)
-  #define S024_BAR_VERTICAL 1
-  #define S024_BAR_W 96                          // width of the right-hand bar
-  #define S024_BAR_X (S024_TFT_W - S024_BAR_W)   // 320-96 = 224
-  #define S024_CONTENT_W S024_BAR_X              // sprite region width  (224)
-  #define S024_CONTENT_H S024_TFT_H              // sprite region height (240)
-#else
-  #define S024_BAR_VERTICAL 0
-  #define S024_BAR_H 64
-  #define S024_BAR_Y (S024_TFT_H - S024_BAR_H)   // 256
-  #define S024_CONTENT_W S024_TFT_W
-  #define S024_CONTENT_H S024_BAR_Y
-#endif
+// ── Touch input zones (no visible buttons) ──────────────────────────────
+// There is NO drawn button bar. The buddy fills the entire screen, and the
+// bottom half acts as two invisible touch targets: bottom-left = A,
+// bottom-right = B. The top half is "tap to wake / no button".
+//   S024_TOUCH_ZONE_Y  : screen Y at/below which a touch counts as A/B.
+//   S024_TOUCH_SPLIT_X : screen X dividing A (left) from B (right).
+#define S024_TOUCH_ZONE_Y  (S024_TFT_H / 2)   // bottom half
+#define S024_TOUCH_SPLIT_X (S024_TFT_W / 2)   // left | right
+
+// The buddy uses the WHOLE screen now.
+#define S024_CONTENT_W S024_TFT_W
+#define S024_CONTENT_H S024_TFT_H
 
 // ── Buddy sprite placement ─────────────────────────────────────────────
 // The app sprite is 135 wide x 240 tall (aspect 0.56). The content region is
-// S024_CONTENT_W x S024_CONTENT_H. Aspect rarely matches, so pick a fit mode:
+// the full panel (S024_CONTENT_W x S024_CONTENT_H). Aspect rarely matches, so
+// pick a fit mode:
 //
-//   0 = STRETCH  fill the whole content region; X and Y scale independently.
-//                Mild distortion, but ALL content (info text, HUD, approval
+//   0 = STRETCH  fill the whole screen; X and Y scale independently. Mild
+//                distortion, but ALL content (info text, HUD, approval
 //                prompt) stays on screen. Default.
 //   1 = FIT      uniform scale, no distortion; the limiting axis touches the
 //                edge and the other letterboxes.
