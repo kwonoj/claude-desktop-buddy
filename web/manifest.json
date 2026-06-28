@@ -1,0 +1,13 @@
+{
+  "name": "Claude Desktop Buddy (CYD)",
+  "version": "1.0.0",
+  "new_install_prompt_erase": false,
+  "builds": [
+    {
+      "chipFamily": "ESP32",
+      "parts": [
+        { "path": "factory.bin", "offset": 0 }
+      ]
+    }
+  ]
+}
