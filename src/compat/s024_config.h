@@ -12,9 +12,20 @@
 // Arduino forum "Another CYD issue (ESP32-2432S024C) [Solved]", and the
 // elik745i/ESP32-2432s024c platformio.ini. See .kilo/plans/esp32-2432s024-port.md.
 
-// ── Panel geometry (native, portrait) ──────────────────────────────────
-#define S024_TFT_W 240
-#define S024_TFT_H 320
+// ── Orientation ─────────────────────────────────────────────────────────
+// Portrait, with the A/B bar along the bottom. The app's sprite is portrait
+// (135x240) so this matches its native layout.
+//   0/2 = portrait (240x320), 1/3 = landscape (320x240).
+// If the image is upside-down for how you hold the board, change 0 -> 2.
+#define S024_ROTATION 0
+
+#if (S024_ROTATION & 1)
+  #define S024_TFT_W 320
+  #define S024_TFT_H 240
+#else
+  #define S024_TFT_W 240
+  #define S024_TFT_H 320
+#endif
 
 // ── Backlight ──────────────────────────────────────────────────────────
 #define S024_BL_PIN  27
@@ -66,30 +77,39 @@
 #define S024_BOOT_SELFTEST 0
 
 // ── On-screen A/B button bar ───────────────────────────────────────────
-// The buddy sprite is 135x240; it's pushed into the top of the 240x320
-// panel and the freed strip at the bottom becomes the two touch targets.
-#define S024_BAR_H 64
-#define S024_BAR_Y (S024_TFT_H - S024_BAR_H)   // 256
+// In landscape the bar is a vertical strip on the RIGHT edge, split into B
+// (top) and A (bottom) — matching how the buttons sit when the panel is
+// mounted with the cable to the right. The sprite fills the region to its
+// left. (In portrait it falls back to a bottom strip.)
+#if (S024_ROTATION & 1)
+  #define S024_BAR_VERTICAL 1
+  #define S024_BAR_W 96                          // width of the right-hand bar
+  #define S024_BAR_X (S024_TFT_W - S024_BAR_W)   // 320-96 = 224
+  #define S024_CONTENT_W S024_BAR_X              // sprite region width  (224)
+  #define S024_CONTENT_H S024_TFT_H              // sprite region height (240)
+#else
+  #define S024_BAR_VERTICAL 0
+  #define S024_BAR_H 64
+  #define S024_BAR_Y (S024_TFT_H - S024_BAR_H)   // 256
+  #define S024_CONTENT_W S024_TFT_W
+  #define S024_CONTENT_H S024_BAR_Y
+#endif
 
 // ── Buddy sprite placement ─────────────────────────────────────────────
-// The app sprite is 135 wide x 240 tall (aspect 0.56). The usable area above
-// the button bar is 240 x S024_BAR_Y (~0.94) — much squarer. The two can't
-// both be filled by a uniform scale, so pick a fit mode:
+// The app sprite is 135 wide x 240 tall (aspect 0.56). The content region is
+// S024_CONTENT_W x S024_CONTENT_H. Aspect rarely matches, so pick a fit mode:
 //
-//   0 = STRETCH  fill the whole usable area; X and Y scale independently
-//                (buddy slightly wider than tall — but everything, including
-//                 the bottom HUD/approval text, stays on screen). Default.
-//   1 = FIT      uniform scale, no distortion; whichever axis is limiting
-//                touches the edge and the other letterboxes. With this board
-//                that means full height and ~144px width (side bars).
-//   2 = WIDTH    uniform scale to fill width; extra height is cropped to a
-//                centered band. Biggest buddy, but crops the top/bottom of
-//                the sprite (hides the HUD/approval strip) — avoid unless you
-//                only care about the pet.
+//   0 = STRETCH  fill the whole content region; X and Y scale independently.
+//                Mild distortion, but ALL content (info text, HUD, approval
+//                prompt) stays on screen. Default.
+//   1 = FIT      uniform scale, no distortion; the limiting axis touches the
+//                edge and the other letterboxes.
+//   2 = WIDTH    uniform scale to fill width; crops a centered vertical band
+//                (can hide top/bottom of the sprite). Pet-only.
 #define S024_SPR_FIT 0
 
 // Optional manual override of the stretch factors (mode 0 only). 0 = derive
-// from the usable area. Set both to tune the look, e.g. 1.6f / 1.2f.
+// from the content region. Set both to tune the look, e.g. 1.6f / 1.2f.
 #define S024_SPR_ZOOM_X 0.0f
 #define S024_SPR_ZOOM_Y 0.0f
 

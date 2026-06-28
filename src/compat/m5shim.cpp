@@ -101,7 +101,7 @@ void M5Shim::begin() {
   pinMode(S024_LED_B, OUTPUT); digitalWrite(S024_LED_B, HIGH);
 
   Lcd.init();
-  Lcd.setRotation(0);
+  Lcd.setRotation(S024_ROTATION);
   Lcd.invertDisplay(S024_INVERT_DISPLAY);
 
 #if S024_BOOT_SELFTEST
@@ -124,12 +124,20 @@ void M5Shim::begin() {
 void M5Shim::update() {
   g_touchDown = readTouch(g_tx, g_ty);
 
-  // Bottom bar splits into A (left half) / B (right half).
   bool aDown = false, bDown = false;
+#if S024_BAR_VERTICAL
+  // Right-hand vertical bar: top half = B, bottom half = A.
+  if (g_touchDown && g_tx >= S024_BAR_X) {
+    if (g_ty < S024_TFT_H / 2) bDown = true;
+    else                       aDown = true;
+  }
+#else
+  // Bottom bar: left half = A, right half = B.
   if (g_touchDown && g_ty >= S024_BAR_Y) {
     if (g_tx < S024_TFT_W / 2) aDown = true;
     else                       bDown = true;
   }
+#endif
   BtnA.set(aDown);
   BtnB.set(bDown);
 }
@@ -202,9 +210,9 @@ void ShimRtc::GetDate(RTC_DateTypeDef* d) {
 void m5PushBuddy(TFT_eSprite& spr) {
   const int sw = spr.width(), sh = spr.height();
 
-  // Usable area above the button bar.
-  const int availW = S024_TFT_W;
-  const int availH = S024_BAR_Y;
+  // Content region (the panel area not occupied by the A/B bar).
+  const int availW = S024_CONTENT_W;
+  const int availH = S024_CONTENT_H;
 
   // Per-axis zoom factors. STRETCH fills both axes (X/Y independent); FIT and
   // WIDTH use a single uniform factor on both. srcTop is the first source row
@@ -282,9 +290,6 @@ void m5PushBuddy(TFT_eSprite& spr) {
 // ── Soft A/B buttons ────────────────────────────────────────────────────
 void m5DrawSoftButtons() {
   TFT_eSPI& g = M5.Lcd;
-  const int y  = S024_BAR_Y;
-  const int h  = S024_BAR_H - 2;
-  const int wL = S024_TFT_W / 2;
   bool aHot = M5.BtnA.isPressed();
   bool bHot = M5.BtnB.isPressed();
 
@@ -293,20 +298,45 @@ void m5DrawSoftButtons() {
   g_barDirty = false;
   lastA = aHot; lastB = bHot;
 
+  g.setTextDatum(MC_DATUM);
+  g.setTextSize(3);
+
+#if S024_BAR_VERTICAL
+  // Vertical bar on the right: B (top) over A (bottom).
+  const int x  = S024_BAR_X;
+  const int w  = S024_BAR_W - 2;
+  const int hH = S024_TFT_H / 2;
+  g.drawFastVLine(x - 1, 0, S024_TFT_H, TFT_DARKGREY);
+
+  // B = deny (red), top half.
+  g.fillRect(x, 0, w, hH - 1, bHot ? RED : TFT_BLACK);
+  g.drawRect(x, 0, w, hH - 1, RED);
+  // A = approve (green), bottom half.
+  g.fillRect(x, hH + 1, w, S024_TFT_H - hH - 1, aHot ? GREEN : TFT_BLACK);
+  g.drawRect(x, hH + 1, w, S024_TFT_H - hH - 1, GREEN);
+
+  g.setTextColor(bHot ? TFT_BLACK : RED, bHot ? RED : TFT_BLACK);
+  g.drawString("B", x + w / 2, hH / 2);
+  g.setTextColor(aHot ? TFT_BLACK : GREEN, aHot ? GREEN : TFT_BLACK);
+  g.drawString("A", x + w / 2, hH + (S024_TFT_H - hH) / 2);
+#else
+  // Horizontal bar on the bottom: A (left) | B (right).
+  const int y  = S024_BAR_Y;
+  const int h  = S024_BAR_H - 2;
+  const int wL = S024_TFT_W / 2;
   g.drawFastHLine(0, y - 1, S024_TFT_W, TFT_DARKGREY);
 
-  // A = approve (green), B = deny (red).
   g.fillRect(0, y, wL - 1, h, aHot ? GREEN : TFT_BLACK);
   g.drawRect(0, y, wL - 1, h, GREEN);
   g.fillRect(wL + 1, y, S024_TFT_W - wL - 1, h, bHot ? RED : TFT_BLACK);
   g.drawRect(wL + 1, y, S024_TFT_W - wL - 1, h, RED);
 
-  g.setTextDatum(MC_DATUM);
-  g.setTextSize(3);
   g.setTextColor(aHot ? TFT_BLACK : GREEN, aHot ? GREEN : TFT_BLACK);
   g.drawString("A", wL / 2, y + h / 2);
   g.setTextColor(bHot ? TFT_BLACK : RED, bHot ? RED : TFT_BLACK);
   g.drawString("B", wL + (S024_TFT_W - wL) / 2, y + h / 2);
+#endif
+
   g.setTextDatum(TL_DATUM);
   g.setTextSize(1);
 }

@@ -13,6 +13,12 @@
 #define BUDDY_PUSH(spr) (spr).pushSprite(0, 0)
 #endif
 
+// Display rotation the buddy renders at. Portrait (0) on the M5StickC Plus;
+// board shims override it (the CYD panel is mounted landscape).
+#ifndef BUDDY_ROTATION
+#define BUDDY_ROTATION 0
+#endif
+
 TFT_eSprite spr = TFT_eSprite(&M5.Lcd);
 
 // Advertise as "Claude-XXXX" (last two BT MAC bytes) so multiple sticks
@@ -945,7 +951,7 @@ void drawHUD() {
 
 void setup() {
   M5.begin();
-  M5.Lcd.setRotation(0);
+  M5.Lcd.setRotation(BUDDY_ROTATION);
   M5.Imu.Init();
   M5.Beep.begin();
   startBt();

@@ -144,3 +144,6 @@ void m5SetLed(bool r, bool g, bool b);
 
 // This board has no physical buttons — a tap anywhere should wake the screen.
 #define BUDDY_TOUCH_WAKE 1
+
+// The CYD panel is mounted landscape; render the whole UI rotated.
+#define BUDDY_ROTATION S024_ROTATION
