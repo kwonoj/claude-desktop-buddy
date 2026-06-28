@@ -22,19 +22,41 @@ waiting, and lets you approve or deny right from the device.
 
 ## Hardware
 
-The firmware targets ESP32 with the Arduino framework. As written, it
-depends on the M5StickCPlus library for its display, IMU, and button
-drivers—so you'll need that board, or a fork that swaps those drivers for
-your own pin layout.
+The firmware targets ESP32 with the Arduino framework. Two boards are
+supported out of the box via PlatformIO environments:
+
+- **`m5stickc-plus`** — the original M5StickC Plus (ESP32, 135×240, IMU,
+  buttons, buzzer, AXP192).
+- **`esp32-2432s024r`** — the TZT/Sunton **ESP32-2432S024R "Cheap Yellow
+  Display"** (ESP32-WROOM, 2.4" 240×320 ST7789, XPT2046 resistive touch).
+  No IMU/buzzer/battery gauge; the buddy runs via a drop-in
+  `src/compat/M5StickCPlus.h` shim that maps `M5.*` onto this board's
+  TFT_eSPI display, touch, and PWM backlight. App, BLE, pets, and stats are
+  unchanged. See `.kilo/plans/esp32-2432s024-port.md` for the port notes.
 
 ## Flashing
 
+### From your browser (CYD, no tools)
+
+The easiest path for the Cheap Yellow Display: open the GitHub Pages
+installer in **desktop Chrome or Edge**, plug in the board, and click
+**Connect & Install**. It flashes a prebuilt `factory.bin` over Web Serial —
+nothing to install locally. (CI builds and deploys the page; see
+`.github/workflows/build-cyd.yml` and `web/`.)
+
+### With PlatformIO
+
 Install
 [PlatformIO Core](https://docs.platformio.org/en/latest/core/installation/),
-then:
+then pick the env for your board:
 
 ```bash
-pio run -t upload
+# Cheap Yellow Display (default env)
+pio run -e esp32-2432s024r -t upload
+pio run -e esp32-2432s024r -t uploadfs   # bundles a GIF character
+
+# M5StickC Plus
+pio run -e m5stickc-plus -t upload
 ```
 
 If you're starting from a previously-flashed device, wipe it first:

@@ -5,6 +5,14 @@
 #include "data.h"
 #include "buddy.h"
 
+// Frame presentation seam. On the real M5StickC Plus the 135x240 sprite is
+// the whole screen, so this is a plain pushSprite. Board shims (e.g. the CYD
+// compat layer) define BUDDY_PUSH first to scale the sprite into a larger
+// panel and draw on-screen buttons. This is board glue, not app logic.
+#ifndef BUDDY_PUSH
+#define BUDDY_PUSH(spr) (spr).pushSprite(0, 0)
+#endif
+
 TFT_eSprite spr = TFT_eSprite(&M5.Lcd);
 
 // Advertise as "Claude-XXXX" (last two BT MAC bytes) so multiple sticks
@@ -978,7 +986,7 @@ void setup() {
       spr.drawString("a buddy appears", W/2, H/2 + 12);
     }
     spr.setTextDatum(TL_DATUM); spr.setTextSize(1);
-    spr.pushSprite(0, 0);
+    BUDDY_PUSH(spr);
     delay(1800);
   }
 
@@ -1050,6 +1058,11 @@ void loop() {
     }
     wake();
   }
+#ifdef BUDDY_TOUCH_WAKE
+  // On touch-only boards, a tap anywhere (not just the A/B bar) wakes the
+  // screen. Board input glue, not app logic.
+  if (m5TouchAnyDown()) wake();
+#endif
 
   // AXP power button (left side): short-press toggles screen off.
   // Long-press (6s) still powers off the device via AXP hardware.
@@ -1226,7 +1239,7 @@ void loop() {
     if (resetOpen) drawReset();
     else if (settingsOpen) drawSettings();
     else if (menuOpen) drawMenu();
-    spr.pushSprite(0, 0);
+    BUDDY_PUSH(spr);
   }
 
   // Face-down nap: dim immediately, pause animations, accumulate sleep time.

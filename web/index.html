@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Flash Claude Desktop Buddy — ESP32-2432S024 (CYD)</title>
+  <script
+    type="module"
+    src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"
+  ></script>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      max-width: 40rem; margin: 3rem auto; padding: 0 1.25rem; line-height: 1.55;
+    }
+    h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+    .sub { color: #888; margin-top: 0; }
+    code { background: rgba(127,127,127,.18); padding: .1em .35em; border-radius: .25em; }
+    .card { border: 1px solid rgba(127,127,127,.3); border-radius: .75rem; padding: 1.25rem; margin: 1.5rem 0; }
+    ol { padding-left: 1.25rem; }
+    .note { font-size: .9rem; color: #888; }
+    esp-web-install-button { display: inline-block; margin: .5rem 0; }
+    button.activate {
+      font: inherit; font-weight: 600; padding: .7rem 1.4rem; border-radius: .6rem;
+      border: 0; background: #d97757; color: #fff; cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Claude Desktop Buddy — Cheap Yellow Display</h1>
+  <p class="sub">ESP32-2432S024 (2.4" 240×320 touch). Flash straight from your browser — no tools to install.</p>
+
+  <div class="card">
+    <p>Plug the board into USB, then:</p>
+    <esp-web-install-button manifest="./manifest.json">
+      <button class="activate" slot="activate">Connect &amp; Install</button>
+      <span slot="unsupported">Your browser can't flash this — use desktop <strong>Chrome</strong> or <strong>Edge</strong>.</span>
+      <span slot="not-allowed">This page must be served over HTTPS.</span>
+    </esp-web-install-button>
+    <p class="note">Chrome/Edge on desktop only. When prompted, pick the board's serial port
+      (CP2102 / CH340). Installing replaces whatever is on the device.</p>
+  </div>
+
+  <h2>After flashing</h2>
+  <ol>
+    <li>In the Claude desktop app: <strong>Help → Troubleshooting → Enable Developer Mode</strong>.</li>
+    <li><strong>Developer → Open Hardware Buddy…</strong>, click <strong>Connect</strong>, pick <code>Claude-XXXX</code>.</li>
+    <li>Grant Bluetooth permission. Enter the 6-digit passkey shown on the device.</li>
+  </ol>
+
+  <h2>Controls (touch)</h2>
+  <p>This board has no physical buttons — the bottom bar is two touch zones:
+    <strong>A</strong> (left) and <strong>B</strong> (right). Tap anywhere to wake;
+    long-press <strong>A</strong> for the menu. On a permission prompt, <strong>A</strong> approves and <strong>B</strong> denies.</p>
+
+  <p class="note">
+    Firmware source &amp; protocol:
+    <a href="https://github.com/anthropics/claude-desktop-buddy">claude-desktop-buddy</a>.
+    The BLE API is a maker/developer feature, not an officially supported product.
+  </p>
+</body>
+</html>

@@ -1,0 +1,117 @@
+name: Build CYD firmware & deploy installer
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write     # attach assets to releases
+  pages: write        # deploy the web installer
+  id-token: write     # required by deploy-pages
+
+env:
+  PIO_ENV: esp32-2432s024r
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            ~/.cache/pip
+          key: pio-${{ runner.os }}-${{ hashFiles('platformio.ini') }}
+
+      - name: Install PlatformIO
+        run: pip install --upgrade platformio
+
+      - name: Build firmware
+        run: pio run -e "$PIO_ENV"
+
+      - name: Build filesystem image (bundles the default character)
+        run: pio run -e "$PIO_ENV" -t buildfs
+
+      - name: Merge into a single factory.bin
+        run: |
+          set -euo pipefail
+          BUILD_DIR=".pio/build/${PIO_ENV}"
+          BOOTLOADER="${BUILD_DIR}/bootloader.bin"
+          PARTITIONS="${BUILD_DIR}/partitions.bin"
+          FIRMWARE="${BUILD_DIR}/firmware.bin"
+          SPIFFS="${BUILD_DIR}/littlefs.bin"
+          BOOT_APP0="$(find ~/.platformio/packages/framework-arduinoespressif32 \
+            -path '*tools/partitions/boot_app0.bin' | head -n1)"
+          ESPTOOL="$(find ~/.platformio/packages/tool-esptoolpy -name 'esptool.py' | head -n1)"
+
+          echo "bootloader=$BOOTLOADER"
+          echo "partitions=$PARTITIONS"
+          echo "boot_app0=$BOOT_APP0"
+          echo "firmware=$FIRMWARE"
+          echo "littlefs=$SPIFFS ($( [ -f "$SPIFFS" ] && echo present || echo missing ))"
+
+          mkdir -p site
+          # App-only factory image: bootloader + partitions + boot_app0 + app.
+          # The LittleFS partition starts at 0x210000 (see boards/partitions_4mb.csv);
+          # include it so a fresh device boots with the bundled character.
+          ARGS=(--chip esp32 merge_bin -o site/factory.bin \
+                --flash_mode dio --flash_freq 40m --flash_size 4MB \
+                0x1000 "$BOOTLOADER" \
+                0x8000 "$PARTITIONS" \
+                0xe000 "$BOOT_APP0" \
+                0x10000 "$FIRMWARE")
+          if [ -f "$SPIFFS" ]; then
+            ARGS+=(0x210000 "$SPIFFS")
+          fi
+          python "$ESPTOOL" "${ARGS[@]}"
+
+          cp "$FIRMWARE" site/firmware.bin
+
+      - name: Stage web installer (HTML + manifest)
+        run: |
+          cp web/index.html    site/index.html
+          cp web/manifest.json site/manifest.json
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cyd-firmware
+          path: |
+            site/factory.bin
+            site/firmware.bin
+
+      - name: Upload Pages artifact
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Attach binaries to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            site/factory.bin
+            site/firmware.bin
+
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
