@@ -244,39 +244,42 @@ void m5PushBuddy(TFT_eSprite& spr) {
   if (ow > availW) ow = availW;
   if (oh > availH) oh = availH;
 
-  static uint16_t* buf = nullptr;
-  static int cap = 0;
-  if (!buf || cap < ow * oh) {
-    if (buf) free(buf);
-    cap = ow * oh;
-    buf = (uint16_t*)malloc((size_t)cap * sizeof(uint16_t));
-  }
   uint16_t* src = (uint16_t*)spr.getPointer();
-  if (!buf || !src) { spr.pushSprite(0, 0); return; }
+  if (!src) { spr.pushSprite(0, 0); return; }
 
-  // Nearest-neighbour resample: map each output pixel back to a source pixel.
-  for (int oy = 0; oy < oh; oy++) {
-    int sy = (int)(srcTop + oy / zy); if (sy >= sh) sy = sh - 1;
-    const uint16_t* srow = src + sy * sw;
-    uint16_t* drow = buf + oy * ow;
-    for (int ox = 0; ox < ow; ox++) {
-      int sx = (int)(ox / zx); if (sx >= sw) sx = sw - 1;
-      drow[ox] = srow[sx];
-    }
+  // Scale ONE output row at a time into a small line buffer, pushing each row
+  // as it's produced. A full upscaled framebuffer would be ow*oh*2 bytes
+  // (~150 KB for 240x320) — too big to malloc reliably with BLE + TFT active,
+  // and a failed alloc previously fell back to an unscaled push (the buddy
+  // appeared at native size in the corner). A single row is only ow*2 bytes.
+  static uint16_t* line = nullptr;
+  static int lineCap = 0;
+  if (!line || lineCap < ow) {
+    if (line) free(line);
+    lineCap = ow;
+    line = (uint16_t*)malloc((size_t)ow * sizeof(uint16_t));
   }
+  if (!line) { spr.pushSprite(0, 0); return; }
 
   int x = (availW - ow) / 2; if (x < 0) x = 0;
   int y = (availH - oh) / 2; if (y < 0) y = 0;
 
-  // Clear any letterbox surround so stale pixels from a previous, differently
-  // sized frame don't linger at the edges.
+  // Clear any letterbox surround so stale pixels don't linger at the edges.
   if (ow < availW || oh < availH) {
     M5.Lcd.fillRect(0, 0, availW, availH, TFT_BLACK);
   }
 
   bool prevSwap = M5.Lcd.getSwapBytes();
   M5.Lcd.setSwapBytes(true);
-  M5.Lcd.pushImage(x, y, ow, oh, buf);
+  for (int oy = 0; oy < oh; oy++) {
+    int sy = (int)(srcTop + oy / zy); if (sy >= sh) sy = sh - 1;
+    const uint16_t* srow = src + sy * sw;
+    for (int ox = 0; ox < ow; ox++) {
+      int sx = (int)(ox / zx); if (sx >= sw) sx = sw - 1;
+      line[ox] = srow[sx];
+    }
+    M5.Lcd.pushImage(x, y + oy, ow, 1, line);
+  }
   M5.Lcd.setSwapBytes(prevSwap);
 }
 
