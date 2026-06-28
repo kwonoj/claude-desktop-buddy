@@ -43,12 +43,18 @@
 #define S024_TOUCH_RAW_MAX_X 3900
 #define S024_TOUCH_RAW_MIN_Y 300
 #define S024_TOUCH_RAW_MAX_Y 3900
+// Orientation: with SWAP_XY on, the panel's touch X axis maps to screen Y.
+// On the S024R the X axis reads mirrored vs the display and top/bottom is
+// flipped, so invert X and leave Y un-inverted.
 #define S024_TOUCH_SWAP_XY   1
-#define S024_TOUCH_INVERT_X  0
-#define S024_TOUCH_INVERT_Y  1
+#define S024_TOUCH_INVERT_X  1
+#define S024_TOUCH_INVERT_Y  0
 // Pressure gate: ignore feather-light/ghost touches below this Z.
 #define S024_TOUCH_Z_MIN     250
 
+// Set to 1 to log raw+mapped touch coords to serial and draw a crosshair at
+// the mapped point — flash once with this on to dial in the orientation and
+// raw min/max calibration, then set back to 0.
 #define S024_TOUCH_DEBUG 0
 
 // ── Display inversion ──────────────────────────────────────────────────
@@ -66,15 +72,29 @@
 #define S024_BAR_Y (S024_TFT_H - S024_BAR_H)   // 256
 
 // ── Buddy sprite placement ─────────────────────────────────────────────
-// The app sprite is 135 wide x 240 tall. Scale it up to fill the 240-wide
-// panel above the button bar. 240/135 ≈ 1.78; cap the height so it leaves
-// room for the bar (256px usable).
+// The app sprite is 135 wide x 240 tall (aspect 0.56). The usable area above
+// the button bar is 240 x S024_BAR_Y (~0.94) — much squarer. The two can't
+// both be filled by a uniform scale, so pick a fit mode:
+//
+//   0 = STRETCH  fill the whole usable area; X and Y scale independently
+//                (buddy slightly wider than tall — but everything, including
+//                 the bottom HUD/approval text, stays on screen). Default.
+//   1 = FIT      uniform scale, no distortion; whichever axis is limiting
+//                touches the edge and the other letterboxes. With this board
+//                that means full height and ~144px width (side bars).
+//   2 = WIDTH    uniform scale to fill width; extra height is cropped to a
+//                centered band. Biggest buddy, but crops the top/bottom of
+//                the sprite (hides the HUD/approval strip) — avoid unless you
+//                only care about the pet.
+#define S024_SPR_FIT 0
+
+// Optional manual override of the stretch factors (mode 0 only). 0 = derive
+// from the usable area. Set both to tune the look, e.g. 1.6f / 1.2f.
+#define S024_SPR_ZOOM_X 0.0f
+#define S024_SPR_ZOOM_Y 0.0f
+
 #define S024_SPR_W 135
 #define S024_SPR_H 240
-#define S024_SPR_ZOOM_X 1.777f          // 135 -> ~240
-#define S024_SPR_ZOOM_Y 1.066f          // 240 -> ~256 (fills to the bar)
-#define S024_SPR_CX (S024_TFT_W / 2)    // horizontal center
-#define S024_SPR_CY (S024_BAR_Y / 2)    // vertical center of the usable area
 
 // ── Input timing ───────────────────────────────────────────────────────
 #define S024_LONGPRESS_MS 600
