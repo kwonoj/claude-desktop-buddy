@@ -80,6 +80,11 @@ static bool readTouch(uint16_t& sx, uint16_t& sy) {
   mapTouch(rawX, rawY, sx, sy);
 #if S024_TOUCH_DEBUG
   Serial.printf("touch raw=(%u,%u) z=%u -> (%u,%u)\n", rawX, rawY, z, sx, sy);
+  // Crosshair at the mapped point so you can see where the firmware thinks
+  // you tapped vs where your finger is.
+  M5.Lcd.drawFastHLine(0, sy, S024_TFT_W, TFT_YELLOW);
+  M5.Lcd.drawFastVLine(sx, 0, S024_TFT_H, TFT_YELLOW);
+  m5SoftButtonsInvalidate();
 #endif
   return true;
 }
@@ -196,8 +201,47 @@ void ShimRtc::GetDate(RTC_DateTypeDef* d) {
 // the panel above the button bar.
 void m5PushBuddy(TFT_eSprite& spr) {
   const int sw = spr.width(), sh = spr.height();
-  const int ow = (int)(sw * S024_SPR_ZOOM_X + 0.5f);
-  const int oh = (int)(sh * S024_SPR_ZOOM_Y + 0.5f);
+
+  // Usable area above the button bar.
+  const int availW = S024_TFT_W;
+  const int availH = S024_BAR_Y;
+
+  // Per-axis zoom factors. STRETCH fills both axes (X/Y independent); FIT and
+  // WIDTH use a single uniform factor on both. srcTop is the first source row
+  // to sample (non-zero only when WIDTH mode crops a centered vertical band).
+  float zx, zy;
+  float srcTop = 0.0f;
+  int   ow, oh;
+
+#if S024_SPR_FIT == 1
+  // FIT: uniform scale, letterbox the non-limiting axis.
+  {
+    float f = (float)availW / sw;
+    float fh = (float)availH / sh;
+    if (fh < f) f = fh;
+    zx = zy = f;
+    ow = (int)(sw * f + 0.5f);
+    oh = (int)(sh * f + 0.5f);
+  }
+#elif S024_SPR_FIT == 2
+  // WIDTH: uniform scale to fill width, crop a centered vertical band.
+  {
+    float f = (float)availW / sw;
+    zx = zy = f;
+    ow = (int)(sw * f + 0.5f);
+    oh = (int)(sh * f + 0.5f);
+    if (oh > availH) { srcTop = ((float)oh - availH) * 0.5f / f; oh = availH; }
+  }
+#else
+  // STRETCH (default): independently fill the whole usable area.
+  zx = (S024_SPR_ZOOM_X > 0.0f) ? S024_SPR_ZOOM_X : (float)availW / sw;
+  zy = (S024_SPR_ZOOM_Y > 0.0f) ? S024_SPR_ZOOM_Y : (float)availH / sh;
+  ow = (int)(sw * zx + 0.5f);
+  oh = (int)(sh * zy + 0.5f);
+#endif
+
+  if (ow > availW) ow = availW;
+  if (oh > availH) oh = availH;
 
   static uint16_t* buf = nullptr;
   static int cap = 0;
@@ -209,20 +253,26 @@ void m5PushBuddy(TFT_eSprite& spr) {
   uint16_t* src = (uint16_t*)spr.getPointer();
   if (!buf || !src) { spr.pushSprite(0, 0); return; }
 
+  // Nearest-neighbour resample: map each output pixel back to a source pixel.
   for (int oy = 0; oy < oh; oy++) {
-    int sy = (int)(oy / S024_SPR_ZOOM_Y); if (sy >= sh) sy = sh - 1;
+    int sy = (int)(srcTop + oy / zy); if (sy >= sh) sy = sh - 1;
     const uint16_t* srow = src + sy * sw;
     uint16_t* drow = buf + oy * ow;
     for (int ox = 0; ox < ow; ox++) {
-      int sx = (int)(ox / S024_SPR_ZOOM_X); if (sx >= sw) sx = sw - 1;
+      int sx = (int)(ox / zx); if (sx >= sw) sx = sw - 1;
       drow[ox] = srow[sx];
     }
   }
 
-  int x = S024_SPR_CX - ow / 2;
-  int y = S024_SPR_CY - oh / 2;
-  if (x < 0) x = 0;
-  if (y < 0) y = 0;
+  int x = (availW - ow) / 2; if (x < 0) x = 0;
+  int y = (availH - oh) / 2; if (y < 0) y = 0;
+
+  // Clear any letterbox surround so stale pixels from a previous, differently
+  // sized frame don't linger at the edges.
+  if (ow < availW || oh < availH) {
+    M5.Lcd.fillRect(0, 0, availW, availH, TFT_BLACK);
+  }
+
   bool prevSwap = M5.Lcd.getSwapBytes();
   M5.Lcd.setSwapBytes(true);
   M5.Lcd.pushImage(x, y, ow, oh, buf);
