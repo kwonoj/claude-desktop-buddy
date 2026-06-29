@@ -277,8 +277,11 @@ void m5PushBuddy(TFT_eSprite& spr) {
     M5.Lcd.fillRect(0, 0, availW, availH, TFT_BLACK);
   }
 
+  // The line buffer holds raw sprite pixels (same 16-bit format the sprite
+  // would push directly), so do NOT byte-swap — swapping corrupts RGB565 and
+  // shows up as a red<->blue channel swap. Match spr.pushSprite() semantics.
   bool prevSwap = M5.Lcd.getSwapBytes();
-  M5.Lcd.setSwapBytes(true);
+  M5.Lcd.setSwapBytes(false);
   for (int oy = 0; oy < oh; oy++) {
     int sy = (int)(srcTop + oy / zy); if (sy >= sh) sy = sh - 1;
     const uint16_t* srow = src + (srcY0 + sy) * fullW + srcX0;

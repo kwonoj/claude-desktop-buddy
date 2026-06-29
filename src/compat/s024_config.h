@@ -114,8 +114,8 @@
 // with an ASCII pet that area is mostly empty. Cropping it and stretching the
 // rest fills the panel. Set all to 0 to push the whole sprite unchanged.
 //   LEFT/RIGHT trim columns; TOP/BOTTOM trim rows.
-#define S024_SPR_CROP_TOP    44
-#define S024_SPR_CROP_BOTTOM 18
+#define S024_SPR_CROP_TOP    0
+#define S024_SPR_CROP_BOTTOM 0
 #define S024_SPR_CROP_LEFT   0
 #define S024_SPR_CROP_RIGHT  0
 
