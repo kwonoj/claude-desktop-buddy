@@ -108,8 +108,24 @@
 #define S024_SPR_ZOOM_X 0.0f
 #define S024_SPR_ZOOM_Y 0.0f
 
+// Source crop (in 135x240 sprite pixels) applied BEFORE scaling, to trim
+// background-only bands so the meaningful content stretches edge-to-edge.
+// The app reserves the top ~70px for the pet and leaves a small bottom gap;
+// with an ASCII pet that area is mostly empty. Cropping it and stretching the
+// rest fills the panel. Set all to 0 to push the whole sprite unchanged.
+//   LEFT/RIGHT trim columns; TOP/BOTTOM trim rows.
+#define S024_SPR_CROP_TOP    44
+#define S024_SPR_CROP_BOTTOM 18
+#define S024_SPR_CROP_LEFT   0
+#define S024_SPR_CROP_RIGHT  0
+
 #define S024_SPR_W 135
 #define S024_SPR_H 240
+
+// Set to 1 to draw a magenta rectangle around the pushed image region. In
+// STRETCH it should hug all four panel edges — if it does, any "margin" you
+// see is the app's own background inside the sprite, not the scaler.
+#define S024_SPR_DEBUG_BORDER 0
 
 // ── Input timing ───────────────────────────────────────────────────────
 #define S024_LONGPRESS_MS 600

@@ -201,7 +201,15 @@ void ShimRtc::GetDate(RTC_DateTypeDef* d) {
 // buffer (no PSRAM on this board, but the target is small) and blit it into
 // the panel above the button bar.
 void m5PushBuddy(TFT_eSprite& spr) {
-  const int sw = spr.width(), sh = spr.height();
+  const int fullW = spr.width(), fullH = spr.height();
+
+  // Source crop: the sub-rectangle of the sprite we actually scale. Trimming
+  // background-only bands (e.g. the empty top pet area for ASCII) lets the
+  // meaningful content stretch edge-to-edge.
+  const int srcX0 = S024_SPR_CROP_LEFT;
+  const int srcY0 = S024_SPR_CROP_TOP;
+  const int sw = fullW - S024_SPR_CROP_LEFT - S024_SPR_CROP_RIGHT;
+  const int sh = fullH - S024_SPR_CROP_TOP  - S024_SPR_CROP_BOTTOM;
 
   // Content region (the panel area not occupied by the A/B bar).
   const int availW = S024_CONTENT_W;
@@ -273,7 +281,7 @@ void m5PushBuddy(TFT_eSprite& spr) {
   M5.Lcd.setSwapBytes(true);
   for (int oy = 0; oy < oh; oy++) {
     int sy = (int)(srcTop + oy / zy); if (sy >= sh) sy = sh - 1;
-    const uint16_t* srow = src + sy * sw;
+    const uint16_t* srow = src + (srcY0 + sy) * fullW + srcX0;
     for (int ox = 0; ox < ow; ox++) {
       int sx = (int)(ox / zx); if (sx >= sw) sx = sw - 1;
       line[ox] = srow[sx];
@@ -281,6 +289,11 @@ void m5PushBuddy(TFT_eSprite& spr) {
     M5.Lcd.pushImage(x, y + oy, ow, 1, line);
   }
   M5.Lcd.setSwapBytes(prevSwap);
+
+#if S024_SPR_DEBUG_BORDER
+  // Magenta = the full pushed region (should hug all 4 panel edges in STRETCH).
+  M5.Lcd.drawRect(x, y, ow, oh, TFT_MAGENTA);
+#endif
 }
 
 // ── Soft A/B buttons ────────────────────────────────────────────────────
